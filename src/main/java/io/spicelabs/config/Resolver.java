@@ -40,9 +40,9 @@ import java.util.function.Consumer;
  * <h2>Groups</h2>
  *
  * <p>A resolver is built for the groups a command claims, and it will resolve nothing else.
- * That is what stops a command reading settings meant for another, and it is why a key in a
- * group nobody claims can be reported rather than silently ignored — see
- * {@link Resolution#unclaimed()}.
+ * That is what stops a command reading settings meant for another. Whether a table in the
+ * file is a typo is a different question, answered by {@link Groups#unclaimed}: it depends
+ * on every group every command claims, which is knowledge only the host has.
  *
  * <h2>Reporting overrides</h2>
  *

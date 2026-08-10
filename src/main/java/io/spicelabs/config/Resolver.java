@@ -44,6 +44,19 @@ import java.util.function.Consumer;
  * file is a typo is a different question, answered by {@link Groups#unclaimed}: it depends
  * on every group every command claims, which is knowledge only the host has.
  *
+ * <p><strong>A group may not share a name with a command.</strong> At the root of the file a
+ * table is either a group or a command's scope, and {@code [registry.analysis]} can only mean
+ * "the analysis group, for the registry command" if nothing called {@code registry} is also a
+ * group. {@link Groups#collisions} checks it; the alternative is a file whose meaning depends
+ * on which reading you had in mind.
+ *
+ * <h2>Groups that are not tables</h2>
+ *
+ * <p>A group is usually a table of settings. Some are an array of tables — a list of
+ * repositories, say — which has no keys to merge, so a later layer replaces it whole rather
+ * than key by key. {@link Resolution#value} returns such a group as it stands; {@code group}
+ * returns an empty map for it, because it has no scalar settings to speak of.
+ *
  * <h2>Reporting overrides</h2>
  *
  * <p>When a value someone wrote displaces another value someone wrote, the reporter is
@@ -100,6 +113,12 @@ public final class Resolver {
    */
   public Resolver withFile(Path path, Map<String, Object> root, List<String> commandPath) {
     for (String group : groups) {
+      Object whole = root.get(group);
+      if (whole != null && !(whole instanceof Map<?, ?>)) {
+        // An array of tables has no keys to merge, so it is carried whole.
+        applyWhole(group, whole, Origin.sharedTable(path, group));
+        continue;
+      }
       table(root, List.of(group))
           .forEach((key, value) -> apply(group, key, value, Origin.sharedTable(path, group)));
     }
@@ -161,6 +180,16 @@ public final class Resolver {
     return new Resolution(List.copyOf(resolved.values()));
   }
 
+  /**
+   * A group with no keys to merge — an array of tables — carried whole.
+   *
+   * <p>Stored under a reserved empty key so it travels with everything else and keeps its
+   * origin; {@link Resolution#value} is what reads it back.
+   */
+  private void applyWhole(String group, Object value, Origin origin) {
+    apply(group, Resolution.WHOLE, value, origin);
+  }
+
   private void apply(String group, String key, Object value, Origin origin) {
     if (!groups.contains(group)) {
       return;
@@ -203,8 +232,10 @@ public final class Resolver {
     if (here instanceof Map<?, ?> map) {
       Map<String, Object> plain = new LinkedHashMap<>();
       map.forEach((k, v) -> plain.put(String.valueOf(k), v));
-      // Sub-tables are another command's scope, not this group's settings.
-      plain.values().removeIf(v -> v instanceof Map<?, ?>);
+      // Sub-tables inside a group belong to that group — `[credentials] vault.addr`
+      // is a credentials setting. The only place a table means "another command's
+      // scope" is the root, which is why a group may not share a name with a
+      // command; see the class comment.
       return plain;
     }
     return Map.of();

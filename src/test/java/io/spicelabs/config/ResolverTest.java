@@ -146,14 +146,32 @@ class ResolverTest {
   }
 
   @Test
-  void aSubTableIsNotOneOfTheGroupsSettings() {
-    // [analysis] threads is a setting; [analysis.registry] would be a scope, not a value.
+  void aSubTableInsideAGroupBelongsToThatGroup() {
+    // `[credentials] vault.addr` is a credentials setting, not another command's scope.
+    // The only place a table means "a command's scope" is the root, which is why a group
+    // may not share a name with a command.
     Map<String, Object> file =
         table("analysis", table("threads", 16L, "nested", table("threads", 1L)));
 
     Resolution resolved = resolver("analysis").withFile(FILE, file, List.of()).resolve();
 
-    assertEquals(Map.of("threads", 16L), resolved.group("analysis"));
+    assertEquals(16L, resolved.group("analysis").get("threads"));
+    assertEquals(table("threads", 1L), resolved.group("analysis").get("nested"));
+  }
+
+  @Test
+  void aGroupThatIsAnArrayOfTablesIsCarriedWhole() {
+    // A list of repositories has no keys to merge, so there is nothing to layer: a later
+    // source replaces it entirely or leaves it alone.
+    List<Object> repositories =
+        List.of(table("id", "one", "url", "https://a"), table("id", "two", "url", "https://b"));
+    Map<String, Object> file = new LinkedHashMap<>();
+    file.put("repositories", repositories);
+
+    Resolution resolved = resolver("repositories").withFile(FILE, file, List.of()).resolve();
+
+    assertEquals(repositories, resolved.value("repositories").orElseThrow());
+    assertEquals(Map.of(), resolved.group("repositories"), "it has no scalar settings");
   }
 
   @Test

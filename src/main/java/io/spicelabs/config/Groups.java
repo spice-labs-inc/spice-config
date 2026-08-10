@@ -61,6 +61,24 @@ public final class Groups {
   }
 
   /**
+   * Group names that are also command names.
+   *
+   * <p>At the root of a file a table is either a group or a command's scope, so
+   * {@code [registry.analysis]} can only mean "the analysis group, for the registry command"
+   * if nothing called {@code registry} is also a group. A collision does not produce a wrong
+   * answer so much as two defensible answers, which is worse: the file's meaning would depend
+   * on which reading the reader had in mind.
+   *
+   * <p>This is a check on the <em>programs</em>, not on any user's file, so it belongs in a
+   * test rather than in a run — nobody can fix it by editing their configuration.
+   */
+  public static List<String> collisions(
+      Collection<String> claimed, Collection<String> commands) {
+    Set<String> commandNames = new java.util.HashSet<>(commands);
+    return claimed.stream().filter(commandNames::contains).sorted().toList();
+  }
+
+  /**
    * A message naming the unrecognised tables, or empty if there are none.
    *
    * <p>Phrased as a warning rather than an error: an unknown table might belong to a plugin

@@ -37,6 +37,42 @@ public final class Resolution {
     this.settings = settings;
   }
 
+  /**
+   * A resolution over values somebody else already resolved.
+   *
+   * <p>For a component embedded in a host that did the layering — {@code spice} hands a
+   * plugin its groups already decided, and the plugin still wants the typed accessors and
+   * the error messages that name a setting and its source. Everything here shares one
+   * origin, because from the embedded component's point of view there was only one.
+   */
+  public static Resolution of(Map<String, Map<String, Object>> groups, Origin origin) {
+    List<Setting> settings = new java.util.ArrayList<>();
+    groups.forEach(
+        (group, values) ->
+            values.forEach(
+                (key, value) ->
+                    settings.add(new Setting(new Setting.Name(group, key), value, origin))));
+    return new Resolution(List.copyOf(settings));
+  }
+
+  /**
+   * The key a group with no settings of its own is stored under.
+   *
+   * <p>Empty, because no TOML key can be empty, so it cannot collide with a real setting.
+   */
+  static final String WHOLE = "";
+
+  /**
+   * A group's value as it stands, for a group that is not a table of settings.
+   *
+   * <p>An array of tables — a list of repositories, say — has no keys to merge, so it is
+   * carried whole and read back here. For an ordinary group this is empty and
+   * {@link #group} is what you want.
+   */
+  public Optional<Object> value(String group) {
+    return setting(group, WHOLE).map(Setting::value);
+  }
+
   /** Every setting, with its origin. */
   public List<Setting> settings() {
     return settings;
@@ -57,6 +93,9 @@ public final class Resolution {
   public Map<String, Map<String, Object>> groups() {
     Map<String, Map<String, Object>> byGroup = new LinkedHashMap<>();
     for (Setting setting : settings) {
+      if (setting.name().key().equals(WHOLE)) {
+        continue;
+      }
       byGroup
           .computeIfAbsent(setting.name().group(), g -> new LinkedHashMap<>())
           .put(setting.name().key(), setting.value());

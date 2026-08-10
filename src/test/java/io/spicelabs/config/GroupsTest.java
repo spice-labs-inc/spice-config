@@ -41,6 +41,18 @@ class GroupsTest {
   }
 
   @Test
+  void aGroupMayNotShareANameWithACommand() {
+    // [registry.analysis] must have one reading. If `registry` were both a command and a
+    // group, it would have two — and a file whose meaning depends on the reader is worse
+    // than one that is simply wrong.
+    assertEquals(
+        List.of("registry"),
+        Groups.collisions(List.of("analysis", "registry"), List.of("survey", "registry")));
+    assertEquals(
+        List.of(), Groups.collisions(List.of("analysis", "upload"), List.of("survey", "registry")));
+  }
+
+  @Test
   void aCleanFileSaysNothing() {
     assertTrue(
         Groups.describeUnclaimed(Groups.unclaimed(Map.of("analysis", Map.of()), List.of("analysis"), List.of()))

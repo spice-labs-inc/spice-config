@@ -93,6 +93,19 @@ public final class Origin {
     return new Origin(Layer.PASS, "the Spice Pass claim " + claim);
   }
 
+  /**
+   * A host program that resolved this value and passed it in.
+   *
+   * <p>An embedded component cannot see which of the host's layers a value came from, and
+   * should not pretend otherwise: it says where the value entered <em>this</em> program,
+   * which is the honest answer and the useful one when its own defaults are in play.
+   *
+   * @param table how the host named the settings it handed over, e.g. {@code [analysis]}
+   */
+  public static Origin embedded(String table) {
+    return new Origin(Layer.FILE_COMMAND, "[" + table + "] from the host program");
+  }
+
   /** Which layer this came from. */
   public Layer layer() {
     return layer;

@@ -8,8 +8,9 @@ when two disagree. Those rules must have exactly one implementation. They have d
 before: an allowlist of another program's flags, kept in a second program, that ended up
 permitting three flags the first program does not have, with nothing to notice.
 
-This library has no dependencies and no opinion about TOML. Whoever owns a file parses it;
-this decides what the values mean together.
+One dependency: the TOML parser, because reading a config file *is* configuration. Values
+still cross as plain `java.*` maps — the same currency the plugin SPI uses — so nothing here
+imposes tomlj on a caller that already has a parser.
 
 ## The model
 
@@ -26,6 +27,14 @@ the prefix, the group and the key in upper snake case. There are no exceptions, 
 no table of them to remember.
 
 Run standalone, a component changes only the prefix:
+
+| Component | Prefix |
+| --- | --- |
+| `spice` | `SPICE_` |
+| `goatrodeo` | `GOATRODEO_` |
+| `allspice` | `ALLSPICE_` |
+| `sassafras` | `SASSAFRAS_` |
+
 `GOATRODEO_ANALYSIS_MAX_RECORDS` names the same setting as `SPICE_ANALYSIS_MAX_RECORDS`.
 
 The one variation: when a command claims two groups that both define `threads`, the flag is
@@ -48,6 +57,14 @@ threads = 4
 Write a setting once. Override it where it matters. A command resolves a claimed group `g`
 as `[g]` overlaid by `[<command path>.g]`, and reads nothing else — a command cannot see
 settings meant for another, because the groups it did not claim are never resolved.
+
+A group is usually a table of settings. Some name a list of things — an array of
+repositories — and have no keys to layer, so a later source replaces such a group whole;
+`Resolution.value` reads it back.
+
+**A group may not share a name with a command.** At the root of a file a table is either a
+group or a command's scope, so `[registry.analysis]` can only have one reading if nothing
+called `registry` is also a group. `Groups.collisions` checks it.
 
 ### The ladder
 
@@ -80,10 +97,12 @@ what `spice config explain` and `--explain-config` print.
 ## Using it
 
 ```java
+Map<String, Object> file = TomlFile.parse(configFile);   // plain nested maps, all the way down
+
 Resolution resolved =
     new Resolver("SPICE", Set.of("analysis", "upload"), log::info)
         .withDefaults(Map.of("analysis", Map.of("threads", 8L)))
-        .withFile(configFile, parsedRoot, List.of("registry"))
+        .withFile(configFile, file, List.of("registry"))
         .withEnvironment(System.getenv())
         .withFlag("analysis", "threads", threadsOption, "--threads")
         .resolve();

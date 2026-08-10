@@ -50,11 +50,20 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
-    <!-- No compile dependencies, deliberately. This library takes configuration as
-         plain nested maps of java.* values, which is the same currency the plugin
-         SPI uses, so nothing here imposes a TOML parser on anybody. Whoever owns
-         the file parses it; this decides what the values mean together. -->
+    <!-- One compile dependency: the TOML parser. Reading a config file *is*
+         configuration, and the alternative was every component either carrying its
+         own copy of the shallow-to-deep map walk — which has already had a bug — or
+         depending on some unrelated component for it, which is how `spice` came to
+         depend on the analysis engine to read its own config file.
+
+         Values still cross as plain java.* maps, the same currency the plugin SPI
+         uses, so nothing here imposes tomlj on a caller that has its own parser. -->
     <dependencies>
+        <dependency>
+            <groupId>org.tomlj</groupId>
+            <artifactId>tomlj</artifactId>
+            <version>1.1.1</version>
+        </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>

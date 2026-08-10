@@ -86,12 +86,16 @@ public final class Resolution {
     sorted.forEach(
         (group, keys) -> {
           out.append('[').append(group).append("]\n");
-          int width = keys.keySet().stream().mapToInt(String::length).max().orElse(0);
+          // Both columns padded, so the origins line up and the eye can run down them —
+          // "which of these did I not set?" is the question this output is read with.
+          int keyWidth = keys.keySet().stream().mapToInt(String::length).max().orElse(0);
+          int valueWidth =
+              keys.values().stream().mapToInt(s -> render(s.value()).length()).max().orElse(0);
           keys.forEach(
               (key, setting) -> {
-                out.append("  ").append(key);
-                out.append(" ".repeat(width - key.length()));
-                out.append(" = ").append(render(setting.value()));
+                String value = render(setting.value());
+                out.append("  ").append(key).append(" ".repeat(keyWidth - key.length()));
+                out.append(" = ").append(value).append(" ".repeat(valueWidth - value.length()));
                 out.append("    ").append(setting.origin().describe()).append('\n');
               });
           out.append('\n');

@@ -48,7 +48,7 @@ threads = 16
 max_records = 100000
 
 [upload]
-chunk_size_mb = 64
+target_chunk_size = 64
 
 [registry.analysis]     # only `spice registry` sees this
 threads = 4

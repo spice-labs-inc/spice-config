@@ -12,6 +12,11 @@ One dependency: the TOML parser, because reading a config file *is* configuratio
 still cross as plain `java.*` maps — the same currency the plugin SPI uses — so nothing here
 imposes tomlj on a caller that already has a parser.
 
+logback is a second, *optional* dependency, used only by `LogbackLogging` and not transitive.
+Every Spice tool logs through logback, so the wiring lives here once rather than four times;
+a component using another backend applies the `[logging]` group itself and never loads that
+class.
+
 ## The model
 
 ### One name, three forms

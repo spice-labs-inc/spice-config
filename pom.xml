@@ -64,6 +64,18 @@
             <artifactId>tomlj</artifactId>
             <version>1.1.1</version>
         </dependency>
+
+        <!-- Optional, and not transitive: only `LogbackLogging` touches it, and only a
+             component that already uses logback will call that. Every Spice tool does, so
+             this is one implementation of the wiring rather than four copies; a consumer
+             that uses a different backend applies the group itself and never loads the
+             class. -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.5.18</version>
+            <optional>true</optional>
+        </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>

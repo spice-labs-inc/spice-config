@@ -26,20 +26,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          # Full history and tags: the successor check compares this release
+          # tag against every previously released version.
+          fetch-depth: 0
 
-      - name: Validate and extract version from the release tag
+      - name: Validate the release tag
         id: validate
         env:
           # tag_name is "vX.Y.Z" (no refs/tags/ prefix) for the release event.
           TAG_NAME: ${{ github.event.release.tag_name }}
         run: |
-          if [[ "${TAG_NAME}" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
-            VERSION="${BASH_REMATCH[1]}"
-            echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          else
-            echo "Release tag '${TAG_NAME}' does not match spice-config version pattern v*.*.*" >&2
-            exit 1
-          fi
+          set -euo pipefail
+          git tag --list > /tmp/all-tags.txt
+          python3 .github/scripts/check-release-tag.py \
+            "${TAG_NAME}" /tmp/all-tags.txt >> "$GITHUB_OUTPUT"
 
       - name: Set up JDK 21 and GitHub Maven auth
         # setup-java imports the GPG key (gpg-private-key/gpg-passphrase) and
@@ -90,7 +91,40 @@ jobs:
           GPG_PASSPHRASE: ${{ secrets.MAVEN_CENTRAL_GPG_PASSPHRASE }}
 
       - name: Publish spice-config to Maven Central
-        run: mvn --batch-mode clean deploy -P maven-central
+        run: |
+          mvn --batch-mode clean deploy -P maven-central \
+            -Dcentral.autoPublish=${{ steps.validate.outputs.auto_publish }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GPG_PASSPHRASE: ${{ secrets.MAVEN_CENTRAL_GPG_PASSPHRASE }}
+
+      # `mvn deploy` succeeds even when the deployment is only staged, so without
+      # this the run would go green with nothing on Maven Central -- a version
+      # everyone believes shipped but consumers cannot resolve. Fail the run so a
+      # parked release is impossible to miss.
+      - name: Flag release awaiting manual confirmation
+        if: steps.validate.outputs.successor_ok != 'true'
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+          PREVIOUS: ${{ steps.validate.outputs.previous }}
+        run: |
+          {
+            echo "## :warning: Maven Central release awaiting manual confirmation"
+            echo
+            if [ -n "${PREVIOUS}" ]; then
+              echo "\`${TAG_NAME}\` is not a natural successor to \`${PREVIOUS}\`."
+              echo "Expected one of: ${{ steps.validate.outputs.expected }}."
+            else
+              echo "\`${TAG_NAME}\` is lower than every existing release."
+            fi
+            echo
+            echo "The deployment was uploaded and validated, but **has not been published**."
+            echo "It is waiting in the [Central Portal](https://central.sonatype.com/publishing/deployments):"
+            echo
+            echo "- **Publish** it if this version number is deliberate."
+            echo "- **Drop** it otherwise, then delete the \`${TAG_NAME}\` release and tag and cut the correct version."
+            echo
+            echo "GitHub Packages already has \`${TAG_NAME}\`; delete that package version too if you drop this."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error title=Maven Central release awaiting confirmation::${TAG_NAME} was not published automatically${PREVIOUS:+ (does not follow ${PREVIOUS})}. The deployment is parked in the Central Portal and must be published or dropped by hand."
+          exit 1

@@ -27,7 +27,7 @@ jobs:
         # username/password come from the GITHUB_ACTOR / GITHUB_TOKEN env vars
         # (the defaults for server-username / server-password). Those env vars
         # are set on the deploy step below.
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: "temurin"
           java-version: "21"

@@ -47,7 +47,7 @@ jobs:
         # sets up Maven. The `github` server auth is written explicitly in the
         # next step (settings.xml heredoc) using GITHUB_ACTOR/GITHUB_TOKEN env
         # vars, so server-username/server-password are left at their defaults.
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: "temurin"
           java-version: "21"
